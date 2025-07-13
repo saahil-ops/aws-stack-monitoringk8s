@@ -15,11 +15,11 @@ jobs:
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
-        username: root
+        username: devops
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          cd devops || git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git
-          cd devops && git pull
+          cd devopswithsaahil || git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git
+          cd devopswithsaahil && git pull
 
           # Terraform Infra
           cd terraform
