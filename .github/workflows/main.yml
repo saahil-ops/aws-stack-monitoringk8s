@@ -1,0 +1,40 @@
+name: CI/CD to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: SSH into EC2 and Deploy
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd devops || git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git
+          cd devops && git pull
+
+          # Terraform Infra
+          cd terraform
+          terraform init
+          terraform apply -auto-approve
+          cd ..
+
+          # Build Flask App Docker image
+          docker build -t flask-monitoring-app ./docker/simple-flask-app
+
+          # Install k3s if not present
+          
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+          kubectl apply -f k8s/app-deployment.yaml
+          kubectl apply -f k8s/prometheus-deployment.yaml
+          kubectl apply -f k8s/grafana-deployment.yaml
