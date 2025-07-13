@@ -23,7 +23,7 @@ jobs:
         script: |
           echo "✅ Starting deployment on EC2..."
 
-          # Clone repo if not present
+          # Clone repo if missing
           if [ ! -d "devopswithsaahil" ]; then
             git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
           fi
@@ -31,24 +31,44 @@ jobs:
           cd devopswithsaahil
           git pull
 
-          # Initialize and apply Terraform
+          # Enable Docker Buildx
+          if ! command -v docker-buildx &> /dev/null; then
+            echo "🔧 Installing Docker Buildx plugin..."
+            sudo apt-get update
+            sudo apt-get install -y docker-buildx-plugin
+          fi
+
+          # Build Docker image
+          if [ -d "./docker/simple-flask-app" ]; then
+            docker buildx build -t flask-monitoring-app ./docker/simple-flask-app
+          else
+            echo "❌ Docker app directory not found: ./docker/simple-flask-app"
+            exit 1
+          fi
+
+          # Fix K3s kubeconfig permissions
+          if [ -f "/etc/rancher/k3s/k3s.yaml" ]; then
+            echo "🔐 Fixing KUBECONFIG permission..."
+            sudo mkdir -p ~/.kube
+            sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+            sudo chown devops:devops ~/.kube/config
+            chmod 600 ~/.kube/config
+            echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
+            source ~/.bashrc
+          else
+            echo "❌ K3s config not found: /etc/rancher/k3s/k3s.yaml"
+            exit 1
+          fi
+
+          # Provision infrastructure with Terraform
           cd terraform
           terraform init
           terraform apply -auto-approve
           cd ..
 
-          # Build Flask app Docker image
-          docker build -t flask-monitoring-app ./docker/simple-flask-app
-
-          # Deploy K3s if missing
-          if ! command -v k3s &> /dev/null; then
-            curl -sfL https://get.k3s.io | sh -
-          fi
-          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-
-          # Apply K8s manifests
+          # Deploy Kubernetes workloads
           kubectl apply -f k8s/app-deployment.yaml
           kubectl apply -f k8s/prometheus-deployment.yaml
           kubectl apply -f k8s/grafana-deployment.yaml
 
-          echo "🎉 Deployment complete!"
+          echo "🎉 Deployment completed successfully!"
