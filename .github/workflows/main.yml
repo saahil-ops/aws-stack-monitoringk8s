@@ -18,8 +18,11 @@ jobs:
         username: devops
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          cd devopswithsaahil || git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git
-          cd devopswithsaahil && git pull
+          if [ ! -d "devopswithsaahil" ]; then
+            git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
+          fi
+          cd devopswithsaahil
+          git pull
 
           # Terraform Infra
           cd terraform
@@ -31,9 +34,11 @@ jobs:
           docker build -t flask-monitoring-app ./docker/simple-flask-app
 
           # Install k3s if not present
-          
-          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+          if ! command -v k3s &> /dev/null; then
+            curl -sfL https://get.k3s.io | sh -
+          fi
 
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
           kubectl apply -f k8s/app-deployment.yaml
           kubectl apply -f k8s/prometheus-deployment.yaml
           kubectl apply -f k8s/grafana-deployment.yaml
