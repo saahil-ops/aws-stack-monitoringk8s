@@ -15,7 +15,7 @@ jobs:
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
+        username: root
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           cd devops || git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git
