@@ -1,6 +1,9 @@
-name: CI/CD to EC2
+name: Deploy DevOps Monitoring Stack
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -8,37 +11,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
+    - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: SSH into EC2 and Deploy
+    - name: SSH & Deploy Stack
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
-        username: devops
+        username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
+          echo "✅ Starting deployment on EC2..."
+
+          # Clone repo if not present
           if [ ! -d "devopswithsaahil" ]; then
             git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
           fi
+
           cd devopswithsaahil
           git pull
 
-          # Terraform Infra
+          # Initialize and apply Terraform
           cd terraform
           terraform init
           terraform apply -auto-approve
           cd ..
 
-          # Build Flask App Docker image
+          # Build Flask app Docker image
           docker build -t flask-monitoring-app ./docker/simple-flask-app
 
-          # Install k3s if not present
+          # Deploy K3s if missing
           if ! command -v k3s &> /dev/null; then
             curl -sfL https://get.k3s.io | sh -
           fi
-
           export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+          # Apply K8s manifests
           kubectl apply -f k8s/app-deployment.yaml
           kubectl apply -f k8s/prometheus-deployment.yaml
           kubectl apply -f k8s/grafana-deployment.yaml
+
+          echo "🎉 Deployment complete!"
