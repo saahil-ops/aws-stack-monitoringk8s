@@ -45,7 +45,7 @@ jobs:
             fi
 
             # Configure KUBECONFIG properly
-            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            sudo export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
             # Deploy Kubernetes workloads
             echo "🚀 Applying Kubernetes manifests..."
