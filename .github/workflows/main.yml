@@ -33,11 +33,11 @@ jobs:
             sudo git pull
 
             # Build Docker image (Docker is preinstalled)
-            if [ -d "./docker/simple-flask-app" ]; then
+            if [ -d "./docker/flask" ]; then
               echo "🐳 Building Flask Docker image..."
               sudo docker buildx build --quiet -t flask-monitoring-app ./docker/flask
             else
-              echo "❌ Docker app directory not found: ./docker/simple-flask-app"
+              echo "❌ Docker app directory not found: ./docker/flask"
               exit 1
             fi
 
