@@ -35,7 +35,7 @@ jobs:
             # Build Docker image (Docker is preinstalled)
             if [ -d "./docker/flask" ]; then
               echo "🐳 Building Flask Docker image..."
-              sudo docker buildx build -t flask-monitoring-app ./docker/flask
+              sudo docker buildx build -t flask-monitoring-app /home/ubuntu/devopswithsaahil/docker/flask
             else
               echo "❌ Docker app directory not found: ./docker/flask"
               exit 1
