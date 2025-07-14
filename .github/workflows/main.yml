@@ -45,12 +45,12 @@ jobs:
             fi
 
             # Configure KUBECONFIG properly
-            sudo export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            sudo systemctl status k3s
 
             # Deploy Kubernetes workloads
             echo "🚀 Applying Kubernetes manifests..."
-            sudo kubectl apply -f k8s/app-deployment.yaml || exit 1
-            sudo kubectl apply -f k8s/prometheus-deployment.yaml || exit 1
-            sudo kubectl apply -f k8s/grafana-deployment.yaml || exit 1
+            sudo kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml apply -f k8s/app-deployment.yaml
+            sudo kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml apply -f k8s/prometheus-deployment.yaml
+            sudo kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml apply -f k8s/grafana-deployment.yaml
 
             echo "✅ Deployment completed successfully."
