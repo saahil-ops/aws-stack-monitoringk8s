@@ -1,4 +1,4 @@
-name: monitoring DevOps aws Stack
+name: Deploy DevOps Monitoring Stack
 
 on:
   push:
@@ -11,51 +11,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: SSH & Deploy Stack
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
-        key: ${{ secrets.EC2_SSH_KEY }}
-        command_timeout: 30m
-        script: |
-          echo "✅ Starting deployment on EC2..."
+      - name: SSH & Deploy Stack
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            echo "✅ Starting deployment on EC2..."
 
-          # Clone repo if missing
-          [ -d "devopswithsaahil" ] || sudo git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
+            # Clone repo if missing
+            if [ ! -d "devopswithsaahil" ]; then
+              sudo git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
+            fi
 
-          cd devopswithsaahil
-          sudo git pull
+            cd devopswithsaahil
+            sudo git pull
 
-          # Build Docker image
-          if [ -d "./docker/simple-flask-app" ]; then
-            echo "🐳 Building Flask Docker image..."
-            sudo docker buildx build --quiet -t flask-monitoring-app ./docker/simple-flask-app
-          else
-            echo "❌ Docker app directory not found: ./docker/simple-flask-app"
-            exit 1
-          fi
+            # Build Docker image (Docker is preinstalled)
+            if [ -d "./docker/simple-flask-app" ]; then
+              echo "🐳 Building Flask Docker image..."
+              sudo docker buildx build --quiet -t flask-monitoring-app ./docker/simple-flask-app
+            else
+              echo "❌ Docker app directory not found: ./docker/simple-flask-app"
+              exit 1
+            fi
 
-          # Fix K3s kubeconfig permissions
-          if [ -f "/etc/rancher/k3s/k3s.yaml" ]; then
-            echo "🔐 Adjusting K3s kubeconfig access..."
-            sudo mkdir -p ~/.kube
-            sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-            sudo chown ubuntu:ubuntu ~/.kube/config
-            sudo chmod 600 ~/.kube/config
-            export KUBECONFIG=~/.kube/config
-          else
-            echo "❌ K3s config not found: /etc/rancher/k3s/k3s.yaml"
-            exit 1
-          fi
+            # Fix K3s kubeconfig permissions
+            if [ -f "/etc/rancher/k3s/k3s.yaml" ]; then
+              echo "🔐 Fixing KUBECONFIG permission..."
+              sudo mkdir -p ~/.kube
+              sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+              sudo chown ubuntu:ubuntu ~/.kube/config
+              sudo chmod 600 ~/.kube/config
+              echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
+              source ~/.bashrc
+            else
+              echo "❌ K3s config not found: /etc/rancher/k3s/k3s.yaml"
+              exit 1
+            fi
 
-          # Apply Kubernetes manifests
-          echo "🚀 Deploying Kubernetes workloads..."
-          sudo kubectl apply -f k8s/app-deployment.yaml
-          sudo kubectl apply -f k8s/prometheus-deployment.yaml
-          sudo kubectl apply -f k8s/grafana-deployment.yaml
+            # Deploy Kubernetes workloads
+            echo "🚀 Applying Kubernetes manifests..."
+            sudo kubectl apply -f k8s/app-deployment.yaml
+            sudo kubectl apply -f k8s/prometheus-deployment.yaml
+            sudo kubectl apply -f k8s/grafana-deployment.yaml
 
-          echo 
+            echo "completed"
