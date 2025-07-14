@@ -60,12 +60,6 @@ jobs:
             exit 1
           fi
 
-          # Provision infrastructure with Terraform
-          cd terraform
-          terraform init
-          terraform apply -auto-approve
-          cd ..
-
           # Deploy Kubernetes workloads
           kubectl apply -f k8s/app-deployment.yaml
           kubectl apply -f k8s/prometheus-deployment.yaml
