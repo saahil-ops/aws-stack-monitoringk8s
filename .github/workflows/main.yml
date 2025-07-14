@@ -23,7 +23,12 @@ jobs:
           command_timeout: 30m
           script: |
             echo "✅ Starting deployment on EC2..."
-
+            echo "  Checking if K3s is running..."
+            if ! sudo systemctl is-active --quiet k3s; then
+            echo "  K3s is not running. Attempting to start it..."
+            sudo systemctl start k3s
+            sleep 10
+            fi
             # Clone or pull latest repo
             if [ ! -d "devopswithsaahil" ]; then
               git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
