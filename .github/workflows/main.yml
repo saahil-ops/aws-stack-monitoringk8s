@@ -1,4 +1,4 @@
-name: Deploy DevOps Monitoring Stack
+name: monitoring DevOps aws Stack
 
 on:
   push:
@@ -20,27 +20,20 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
+        command_timeout: 30m
         script: |
           echo "✅ Starting deployment on EC2..."
 
           # Clone repo if missing
-          if [ ! -d "devopswithsaahil" ]; then
-            git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
-          fi
+          [ -d "devopswithsaahil" ] || sudo git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
 
           cd devopswithsaahil
-          git pull
-
-          # Enable Docker Buildx
-          if ! command -v docker-buildx &> /dev/null; then
-            echo "🔧 Installing Docker Buildx plugin..."
-            sudo apt-get update
-            sudo apt-get install -y docker-buildx-plugin
-          fi
+          sudo git pull
 
           # Build Docker image
           if [ -d "./docker/simple-flask-app" ]; then
-            docker buildx build -t flask-monitoring-app ./docker/simple-flask-app
+            echo "🐳 Building Flask Docker image..."
+            sudo docker buildx build --quiet -t flask-monitoring-app ./docker/simple-flask-app
           else
             echo "❌ Docker app directory not found: ./docker/simple-flask-app"
             exit 1
@@ -48,21 +41,21 @@ jobs:
 
           # Fix K3s kubeconfig permissions
           if [ -f "/etc/rancher/k3s/k3s.yaml" ]; then
-            echo "🔐 Fixing KUBECONFIG permission..."
+            echo "🔐 Adjusting K3s kubeconfig access..."
             sudo mkdir -p ~/.kube
             sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-            sudo chown devops:devops ~/.kube/config
-            chmod 600 ~/.kube/config
-            echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
-            source ~/.bashrc
+            sudo chown ubuntu:ubuntu ~/.kube/config
+            sudo chmod 600 ~/.kube/config
+            export KUBECONFIG=~/.kube/config
           else
             echo "❌ K3s config not found: /etc/rancher/k3s/k3s.yaml"
             exit 1
           fi
 
-          # Deploy Kubernetes workloads
-          kubectl apply -f k8s/app-deployment.yaml
-          kubectl apply -f k8s/prometheus-deployment.yaml
-          kubectl apply -f k8s/grafana-deployment.yaml
+          # Apply Kubernetes manifests
+          echo "🚀 Deploying Kubernetes workloads..."
+          sudo kubectl apply -f k8s/app-deployment.yaml
+          sudo kubectl apply -f k8s/prometheus-deployment.yaml
+          sudo kubectl apply -f k8s/grafana-deployment.yaml
 
-          echo "🎉 Deployment completed successfully!"
+          echo 
