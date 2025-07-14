@@ -46,7 +46,7 @@ jobs:
 
             # Configure KUBECONFIG properly
             sudo systemctl status k3s
-
+            cd /home/ubuntu/devopswithsaahil
             # Deploy Kubernetes workloads
             echo "🚀 Applying Kubernetes manifests..."
             sudo kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml apply -f k8s/app-deployment.yaml
