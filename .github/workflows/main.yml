@@ -14,7 +14,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: SSH & Deploy Stack
+      - name: SSH & Deploy Stack to EC2
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -24,41 +24,33 @@ jobs:
           script: |
             echo "✅ Starting deployment on EC2..."
 
-            # Clone repo if missing
+            # Clone or pull latest repo
             if [ ! -d "devopswithsaahil" ]; then
-              sudo git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
+              git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
             fi
 
             cd devopswithsaahil
-            sudo git pull
+            git pull origin main
 
-            # Build Docker image (Docker is preinstalled)
+            # Build Docker image (assumes K3s uses containerd)
             if [ -d "./docker/flask" ]; then
               echo "🐳 Building Flask Docker image..."
               sudo docker build -t flask-monitoring-app ./docker/flask
+
+              # Save and import into containerd
+              sudo docker save flask-monitoring-app | sudo k3s ctr images import -
             else
               echo "❌ Docker app directory not found: ./docker/flask"
               exit 1
             fi
 
-            # Fix K3s kubeconfig permissions
-            if [ -f "/etc/rancher/k3s/k3s.yaml" ]; then
-              echo "🔐 Fixing KUBECONFIG permission..."
-              sudo mkdir -p ~/.kube
-              sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-              sudo chown ubuntu:ubuntu ~/.kube/config
-              sudo chmod 600 ~/.kube/config
-              echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
-              source ~/.bashrc
-            else
-              echo "❌ K3s config not found: /etc/rancher/k3s/k3s.yaml"
-              exit 1
-            fi
+            # Configure KUBECONFIG properly
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
             # Deploy Kubernetes workloads
             echo "🚀 Applying Kubernetes manifests..."
-            sudo kubectl apply -f k8s/app-deployment.yaml 
-            sudo kubectl apply -f k8s/prometheus-deployment.yaml 
-            sudo kubectl apply -f k8s/grafana-deployment.yaml 
+            sudo kubectl apply -f k8s/app-deployment.yaml || exit 1
+            sudo kubectl apply -f k8s/prometheus-deployment.yaml || exit 1
+            sudo kubectl apply -f k8s/grafana-deployment.yaml || exit 1
 
-            echo "completed"
+            echo "✅ Deployment completed successfully."
