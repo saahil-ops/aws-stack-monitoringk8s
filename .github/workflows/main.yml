@@ -26,11 +26,11 @@ jobs:
             
             # Clone or pull latest repo
             if [ ! -d "devopswithsaahil" ]; then
-              git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
+              sudo git clone https://github.com/saahil-ops/aws-stack-monitoringk8s.git devopswithsaahil
             fi
 
             cd devopswithsaahil
-            git pull
+            sudo git pull
 
             # Build Docker image (assumes K3s uses containerd)
             if [ -d "./docker/flask" ]; then
